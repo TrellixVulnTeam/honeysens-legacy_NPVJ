@@ -52,7 +52,26 @@ class Manager:
         try:
             self.config_dir = tempfile.mkdtemp()
             with tarfile.open(self.config_archive) as config_archive:
-                config_archive.extractall(self.config_dir)
+                def is_within_directory(directory, target):
+                    
+                    abs_directory = os.path.abspath(directory)
+                    abs_target = os.path.abspath(target)
+                
+                    prefix = os.path.commonprefix([abs_directory, abs_target])
+                    
+                    return prefix == abs_directory
+                
+                def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+                
+                    for member in tar.getmembers():
+                        member_path = os.path.join(path, member.name)
+                        if not is_within_directory(path, member_path):
+                            raise Exception("Attempted Path Traversal in Tar File")
+                
+                    tar.extractall(path, members, numeric_owner=numeric_owner) 
+                    
+                
+                safe_extract(config_archive, self.config_dir)
             self.config.readfp(open('{}/honeysens.cfg'.format(self.config_dir)))
         except Exception as e:
             print('Error: Could not parse configuration ({})'.format(str(e)))
